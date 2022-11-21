@@ -28,8 +28,8 @@ android {
         applicationId = "xyz.jmir.tachiyomi.mi"
         minSdk = AndroidConfig.minSdk
         targetSdk = AndroidConfig.targetSdk
-        versionCode = 93
-        versionName = "0.14.2.0"
+        versionCode = 150
+        versionName = "2.13.5.0"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")

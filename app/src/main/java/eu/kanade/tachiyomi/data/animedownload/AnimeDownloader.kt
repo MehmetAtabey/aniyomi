@@ -23,15 +23,12 @@ import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.animesource.online.fetchUrlFromVideo
 import eu.kanade.tachiyomi.data.animedownload.model.AnimeDownload
 import eu.kanade.tachiyomi.data.animedownload.model.AnimeDownloadQueue
-import eu.kanade.tachiyomi.data.animelib.AnimelibUpdateNotifier
 import eu.kanade.tachiyomi.data.cache.EpisodeCache
 import eu.kanade.tachiyomi.data.database.models.Episode
-import eu.kanade.tachiyomi.data.notification.NotificationHandler
 import eu.kanade.tachiyomi.source.UnmeteredSource
 import eu.kanade.tachiyomi.util.lang.launchIO
 import eu.kanade.tachiyomi.util.lang.launchNow
 import eu.kanade.tachiyomi.util.lang.plusAssign
-import eu.kanade.tachiyomi.util.lang.withUIContext
 import eu.kanade.tachiyomi.util.storage.DiskUtil
 import eu.kanade.tachiyomi.util.storage.saveTo
 import eu.kanade.tachiyomi.util.storage.toFFmpegString
@@ -311,18 +308,18 @@ class AnimeDownloader(
                     .maxOfOrNull { it.value.size }
                     ?: 0
                 // TODO: show warnings in stable
-                if (
-                    queuedDownloads > DOWNLOADS_QUEUED_WARNING_THRESHOLD ||
-                    maxDownloadsFromSource > EPISODES_PER_SOURCE_QUEUE_WARNING_THRESHOLD
-                ) {
-                    withUIContext {
-                        notifier.onWarning(
-                            context.getString(R.string.download_queue_size_warning),
-                            WARNING_NOTIF_TIMEOUT_MS,
-                            NotificationHandler.openUrl(context, AnimelibUpdateNotifier.HELP_WARNING_URL),
-                        )
-                    }
-                }
+//                if (
+//                    queuedDownloads > DOWNLOADS_QUEUED_WARNING_THRESHOLD ||
+//                    maxDownloadsFromSource > EPISODES_PER_SOURCE_QUEUE_WARNING_THRESHOLD
+//                ) {
+//                    withUIContext {
+//                        notifier.onWarning(
+//                            context.getString(R.string.download_queue_size_warning),
+//                            WARNING_NOTIF_TIMEOUT_MS,
+//                            NotificationHandler.openUrl(context, AnimelibUpdateNotifier.HELP_WARNING_URL),
+//                        )
+//                    }
+//                }
                 AnimeDownloadService.start(context)
             }
         }
@@ -408,10 +405,8 @@ class AnimeDownloader(
                 if (download.status == AnimeDownload.State.DOWNLOADED) notifier.dismissProgress()
             }
             // If the video list threw, it will resume here
-            .onErrorReturn { error ->
-                download.status = AnimeDownload.State.ERROR
-                notifier.onError(error.message, download.episode.name)
-                download
+            .doOnError { error ->
+                downloadEpisode(download)
             }
     }
 
@@ -464,11 +459,12 @@ class AnimeDownloader(
             }
             .map { video }
             // Mark this video as error and allow to download the remaining
-            .onErrorReturn {
-                video.progress = 0
-                video.status = Video.ERROR
-                notifier.onError(it.message, download.episode.name, download.anime.title)
-                video
+            .onErrorResumeNext {
+                getOrAnimeDownloadVideo(video, download, tmpDir)
+//                video.progress = 0
+//                video.status = Video.ERROR
+//                notifier.onError(it.message, download.episode.name, download.anime.title)
+//                video
             }
     }
 
@@ -487,11 +483,11 @@ class AnimeDownloader(
         return newObservable(video, download, tmpDir, filename)
             // Retry 3 times, waiting 2, 4 and 8 seconds between attempts.
             .onErrorResumeNext {
-                if (tries >= 2) {
-                    return@onErrorResumeNext Observable.error(it)
-                }
+//                if (tries >= 2) {
+//                    return@onErrorResumeNext Observable.error(it)
+//                }
                 tries++
-                return@onErrorResumeNext Observable.timer((2 shl tries - 1) * 1000L, TimeUnit.MILLISECONDS)
+                return@onErrorResumeNext Observable.timer(1000L, TimeUnit.MILLISECONDS)
                     .flatMap { newObservable(video, download, tmpDir, filename) }
             }
     }
