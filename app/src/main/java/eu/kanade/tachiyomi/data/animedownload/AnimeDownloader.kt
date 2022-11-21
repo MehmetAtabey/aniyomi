@@ -239,6 +239,7 @@ class AnimeDownloader(
                     AnimeDownloadService.stop(context)
                     logcat(LogPriority.ERROR, error)
                     notifier.onError(error.message)
+                    AnimeDownloadService.start(context)
                 },
             )
     }
